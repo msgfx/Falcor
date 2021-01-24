@@ -89,6 +89,8 @@ namespace Falcor
         */
         static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
 
+        static void reportLiveObjects();
+
         /** Acts as the destructor for Device. Some resources use gpDevice in their cleanup.
             Cleaning up the SharedPtr directly would clear gpDevice before calling destructors.
         */

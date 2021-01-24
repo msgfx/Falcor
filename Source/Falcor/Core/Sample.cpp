@@ -187,6 +187,7 @@ namespace Falcor
         if(gpDevice) gpDevice->cleanup();
         gpDevice.reset();
         OSServices::stop();
+        Device::reportLiveObjects();
     }
 
     void Sample::run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv)
