@@ -50,6 +50,13 @@ namespace Falcor
         using BoneMeshMap = std::map<std::string, std::vector<uint32_t>>;
         using MeshInstanceList = std::vector<std::vector<const aiNode*>>;
 
+        static bool kAnimLogEnable = false;
+#if _ENABLE_ASSIMP_CUSTOM
+        static const double kAnimTimeUnitFactor = 24.0f / 1000.0f; ///<< Converts from MilliSeconds to Ticks
+#else
+        static const double kAnimTimeUnitFactor = 1.0f;
+#endif
+
         /** Converts specular power to roughness. Note there is no "the conversion".
             Reference: http://simonstechblog.blogspot.com/2011/12/microfacet-brdf.html
             \param specPower specular power of an obsolete Phong BSDF
@@ -198,8 +205,8 @@ namespace Falcor
         bool parseAnimationChannel(const AiType* pKeys, uint32_t count, double time, uint32_t& currentIndex, FalcorType& falcor)
         {
             if (currentIndex >= count) return true;
-
-            if (pKeys[currentIndex].mTime == time)
+            auto keyTime = pKeys[currentIndex].mTime * kAnimTimeUnitFactor;
+            if (keyTime == time)
             {
                 falcor = aiCast(pKeys[currentIndex].mValue);
                 currentIndex++;
@@ -223,9 +230,18 @@ namespace Falcor
         void createAnimation(ImporterData& data, const aiAnimation* pAiAnim)
         {
             assert(pAiAnim->mNumMeshChannels == 0);
-            double duration = pAiAnim->mDuration;
+
+            double duration = pAiAnim->mDuration * kAnimTimeUnitFactor;
             double ticksPerSecond = pAiAnim->mTicksPerSecond ? pAiAnim->mTicksPerSecond : 25;
             double durationInSeconds = duration / ticksPerSecond;
+
+            if(kAnimLogEnable)
+            {
+                logInfo(pAiAnim->mName.C_Str());
+                logInfo("duration: " + std::to_string(duration));
+                logInfo("ticksPerSecond: " + std::to_string(ticksPerSecond));
+                logInfo("durationInSeconds: " + std::to_string(durationInSeconds));
+            }
 
             for (uint32_t i = 0; i < pAiAnim->mNumChannels; i++)
             {
@@ -242,6 +258,12 @@ namespace Falcor
                     );
                     animations.push_back(pAnimation);
                     data.builder.addAnimation(pAnimation);
+                    if (kAnimLogEnable)
+                    {
+                        char logBuf[1024];
+                        sprintf_s(logBuf, "createAnim %16s, NodeID %16u", pAiNode->mNodeName.C_Str(), data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), i));
+                        logInfo(logBuf);
+                    }
                 }
 
                 uint32_t pos = 0, rot = 0, scale = 0;
@@ -251,9 +273,9 @@ namespace Falcor
                 auto nextKeyTime = [&]()
                 {
                     double time = -std::numeric_limits<double>::max();
-                    if (pos < pAiNode->mNumPositionKeys) time = std::max(time, pAiNode->mPositionKeys[pos].mTime);
-                    if (rot < pAiNode->mNumRotationKeys) time = std::max(time, pAiNode->mRotationKeys[rot].mTime);
-                    if (scale < pAiNode->mNumScalingKeys) time = std::max(time, pAiNode->mScalingKeys[scale].mTime);
+                    if (pos < pAiNode->mNumPositionKeys) time = std::max(time, pAiNode->mPositionKeys[pos].mTime * kAnimTimeUnitFactor);
+                    if (rot < pAiNode->mNumRotationKeys) time = std::max(time, pAiNode->mRotationKeys[rot].mTime * kAnimTimeUnitFactor);
+                    if (scale < pAiNode->mNumScalingKeys) time = std::max(time, pAiNode->mScalingKeys[scale].mTime * kAnimTimeUnitFactor);
                     assert(time != -std::numeric_limits<double>::max());
                     return time;
                 };
@@ -263,11 +285,21 @@ namespace Falcor
                     double time = nextKeyTime();
                     assert(time == 0 || (time / ticksPerSecond) > keyframe.time);
                     keyframe.time = time / ticksPerSecond;
+                    if (kAnimLogEnable)
+                    {
+                        logInfo("time: " + std::to_string(time) + ", keyframe.time: " + std::to_string(keyframe.time));
+                    }
 
                     // Note the order of the logical-and, we don't want to short-circuit the function calls
                     done = parseAnimationChannel(pAiNode->mPositionKeys, pAiNode->mNumPositionKeys, time, pos, keyframe.translation);
                     done = parseAnimationChannel(pAiNode->mRotationKeys, pAiNode->mNumRotationKeys, time, rot, keyframe.rotation) && done;
                     done = parseAnimationChannel(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys, time, scale, keyframe.scaling) && done;
+                    if (kAnimLogEnable)
+                    {
+                        logInfo("time: " + std::to_string(time) + ", keyframe.translation: " + std::to_string(keyframe.translation.x) + ", " + std::to_string(keyframe.translation.y) + ", " + std::to_string(keyframe.translation.z));
+                        logInfo("time: " + std::to_string(time) + ", keyframe.rotation: " + std::to_string(keyframe.rotation.x) + ", " + std::to_string(keyframe.rotation.y) + ", " + std::to_string(keyframe.rotation.z));
+                        logInfo("time: " + std::to_string(time) + ", keyframe.scaling: " + std::to_string(keyframe.scaling.x) + ", " + std::to_string(keyframe.scaling.y) + ", " + std::to_string(keyframe.scaling.z));
+                    }
                     for(auto pAnimation : animations) pAnimation->addKeyframe(keyframe);
                 }
             }
