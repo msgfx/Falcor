@@ -39,7 +39,7 @@ namespace Falcor
 
     D3D12DescriptorHeap::~D3D12DescriptorHeap() = default;
 
-    D3D12DescriptorHeap::SharedPtr D3D12DescriptorHeap::create(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descCount, bool shaderVisible)
+    D3D12DescriptorHeap::SharedPtr D3D12DescriptorHeap::create(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descCount, bool shaderVisible, const std::wstring& name)
     {
         assert(gpDevice);
         DeviceHandle pDevice = gpDevice->getApiHandle();
@@ -55,7 +55,9 @@ namespace Falcor
         {
             throw std::exception("Failed to create descriptor heap");
         }
-
+#if defined(_DEBUG)
+        pHeap->mApiHandle->SetName(name.c_str());
+#endif
         pHeap->mCpuHeapStart = pHeap->mApiHandle->GetCPUDescriptorHandleForHeapStart();
         pHeap->mGpuHeapStart = pHeap->mApiHandle->GetGPUDescriptorHandleForHeapStart();
         return pHeap;

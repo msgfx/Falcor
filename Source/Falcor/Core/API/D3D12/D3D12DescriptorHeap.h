@@ -48,7 +48,7 @@ namespace Falcor
             \param[in] shaderVisible True if the descriptor heap should be shader visible.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descCount, bool shaderVisible = true);
+        static SharedPtr create(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descCount, bool shaderVisible, const std::wstring& name=L"");
 
         GpuHandle getBaseGpuHandle() const { return mGpuHeapStart; }
         CpuHandle getBaseCpuHandle() const { return mCpuHeapStart; }

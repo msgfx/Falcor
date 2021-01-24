@@ -77,7 +77,12 @@ namespace Falcor
         {
             if (descCount[i] > 0)
             {
-                mpApiData->pHeaps[i] = D3D12DescriptorHeap::create(D3D12_DESCRIPTOR_HEAP_TYPE(i), descCount[i], mDesc.mShaderVisible);
+#ifdef _DEBUG
+                auto name = std::to_wstring(i) + L"_Pool_Count_" + std::to_wstring(descCount[i]);
+#else
+                auto name = L"";
+#endif
+                mpApiData->pHeaps[i] = D3D12DescriptorHeap::create(D3D12_DESCRIPTOR_HEAP_TYPE(i), descCount[i], mDesc.mShaderVisible, name);
             }
         }
     }
